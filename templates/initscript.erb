@@ -1,0 +1,112 @@
+#!/bin/bash
+# Startup script for '<%= @prog %>'
+#
+# chkconfig: - 99 01
+# description: Run data collection for a number of subsystems
+#    see '<%= @conf %>' for startup options
+# config: '<%= @conf %>'
+
+
+# BEGIN INIT INFO
+# Provides:          '<%= @prognm %>'
+# Required-Start:    $syslog
+# Required-Stop:     $syslog
+# Default-Start:
+# Default-Stop:      0 1 2 3 4 5 6
+# Short-Description: Run data collection for a number of subsystems
+# Description:       Run data collection for a number of subsystems
+# END INIT INFO
+
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+exec='<%= @exename %>'
+config='<%= @conf %>'
+prog='<%= @prognm %>'
+OPTS='<%= @opts %>'
+STOPOPTS='<%= @stopopts %>'
+
+[ -e /etc/sysconfig/$prog ]  && . /etc/sysconfig/$prog
+
+lockfile=/var/lock/subsys/$prog
+
+start() {
+    [ -x $exec ]  || exit 5
+#    [ -f $config ]  || exit 6
+    echo -n $"Starting $prog: "
+    dout=`daemon $exec $OPTS`
+    echo $dout
+    retval=$?
+    pid=$( /bin/echo $dout | /bin/awk '{print $1}')
+    echo
+    [ $retval -eq 0 ]  && echo $pid > $lockfile
+    [ $retval -ne 0 ] && echo failed to start $prod
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    pid=$( cat $lockfile )
+    [ -z $pid ] || kill $pid
+    retval=$?
+    echo
+    [ $retval -eq 0 ]  && rm -f $lockfile
+    #staprun -d $STOPOPTS
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    restart
+}
+
+force_reload() {
+    restart
+}
+
+
+rh_status() {
+    [ -f $lockfile ] &&  ps -p $( cat $lockfile ) > /dev/null
+}
+
+rh_status_q() {
+  rh_status >/dev/null
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 2
+esac
+exit $?
+
